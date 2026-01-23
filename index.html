@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Gratitude">
+<title>Gratitude Journal</title>
+
+<!-- App Icon for iOS -->
+<link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiB2aWV3Qm94PSIwIDAgNTEyIDUxMiI+CiAgPGRlZnM+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9ImJnR3JhZGllbnQiIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMTAwJSIgeTI9IjEwMCUiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAlIiBzdHlsZT0ic3RvcC1jb2xvcjojRUY0NDQ0Ii8+CiAgICAgIDxzdG9wIG9mZnNldD0iNTAlIiBzdHlsZT0ic3RvcC1jb2xvcjojREMyNjI2Ii8+CiAgICAgIDxzdG9wIG9mZnNldD0iMTAwJSIgc3R5bGU9InN0b3AtY29sb3I6I0I5MUMxQyIvPgogICAgPC9saW5lYXJHcmFkaWVudD4KICA8L2RlZnM+CiAgPHJlY3QgeD0iMCIgeT0iMCIgd2lkdGg9IjUxMiIgaGVpZ2h0PSI1MTIiIHJ4PSIxMTQiIHJ5PSIxMTQiIGZpbGw9InVybCgjYmdHcmFkaWVudCkiLz4KICA8ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSgyNTYsIDI4MCkiPgogICAgPHBhdGggZD0iTTAgLTQwIEMtMTUgLTgwLCAtNzAgLTgwLCAtODUgLTQwIEMtMTAwIDAsIC03MCA1MCwgMCAxMDAgQzcwIDUwLCAxMDAgMCwgODUgLTQwIEM3MCAtODAsIDE1IC04MCwgMCAtNDBaIiBmaWxsPSIjMDAwMDAwIiB0cmFuc2Zvcm09InNjYWxlKDIpIi8+CiAgPC9nPgogIDxsaW5lIHgxPSI4MCIgeTE9IjM4MCIgeDI9IjQzMiIgeTI9IjE2MCIgc3Ryb2tlPSIjRkZGRkZGIiBzdHJva2Utd2lkdGg9IjE0IiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KICA8cG9seWdvbiBwb2ludHM9IjQzMiwxNjAgMzk1LDE0NSA0MDAsMTg1IiBmaWxsPSIjRkZGRkZGIiB0cmFuc2Zvcm09InJvdGF0ZSgtNSwgNDMyLCAxNjApIi8+CiAgPGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoODAsIDM4MCkgcm90YXRlKC0zMykiPgogICAgPHBhdGggZD0iTTAsMCBMLTM1LC0yMCBMLTgsMCBMLTM1LDIwIFoiIGZpbGw9IiNGRkZGRkYiLz4KICA8L2c+Cjwvc3ZnPg==">
+
+<style>
+* {
+margin: 0;
+padding: 0;
+box-sizing: border-box;
+}
+
+body {
+font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+background: linear-gradient(135deg, #FEF3C7 0%, #FDBA74 50%, #FB923C 100%);
+min-height: 100vh;
+padding: 16px;
+padding-top: env(safe-area-inset-top, 16px);
+padding-bottom: env(safe-area-inset-bottom, 16px);
+}
+
+.container {
+max-width: 600px;
+margin: 0 auto;
+}
+
+.header {
+text-align: center;
+margin-bottom: 24px;
+}
+
+.header h1 {
+font-size: 28px;
+color: #92400E;
+margin-bottom: 4px;
+}
+
+.header p {
+font-size: 16px;
+color: #B45309;
+}
+
+.entry-form {
+background: white;
+border-radius: 20px;
+padding: 20px;
+margin-bottom: 24px;
+box-shadow: 0 4px 20px rgba(180, 83, 9, 0.15);
+}
+
+.entry-form textarea {
+width: 100%;
+height: 100px;
+padding: 16px;
+font-size: 16px;
+border: 2px solid #FDE68A;
+border-radius: 12px;
+background: #FFFBEB;
+color: #92400E;
+resize: none;
+outline: none;
+font-family: inherit;
+}
+
+.entry-form textarea:focus {
+border-color: #F59E0B;
+}
+
+.entry-form textarea::placeholder {
+color: #D97706;
+opacity: 0.5;
+}
+
+.media-section {
+margin-top: 12px;
+}
+
+.media-preview {
+position: relative;
+display: inline-block;
+margin-bottom: 12px;
+}
+
+.media-preview img,
+.media-preview video {
+max-width: 100%;
+max-height: 150px;
+border-radius: 12px;
+border: 2px solid #FDE68A;
+}
+
+.media-preview .remove-btn {
+position: absolute;
+top: -8px;
+right: -8px;
+width: 28px;
+height: 28px;
+background: #EF4444;
+color: white;
+border: none;
+border-radius: 50%;
+font-size: 18px;
+cursor: pointer;
+display: flex;
+align-items: center;
+justify-content: center;
+}
+
+.actions {
+display: flex;
+justify-content: space-between;
+align-items: center;
+margin-top: 16px;
+gap: 12px;
+}
+
+.media-btn {
+display: flex;
+align-items: center;
+gap: 6px;
+padding: 10px 16px;
+background: #FEF3C7;
+color: #B45309;
+border: 1px solid #FDE68A;
+border-radius: 12px;
+font-size: 14px;
+font-weight: 500;
+cursor: pointer;
+}
+
+.add-btn {
+display: flex;
+align-items: center;
+gap: 6px;
+padding: 12px 24px;
+background: linear-gradient(135deg, #F59E0B 0%, #EA580C 100%);
+color: white;
+border: none;
+border-radius: 12px;
+font-size: 16px;
+font-weight: 600;
+cursor: pointer;
+box-shadow: 0 4px 12px rgba(234, 88, 12, 0.3);
+}
+
+.add-btn:disabled {
+opacity: 0.5;
+cursor: not-allowed;
+}
+
+.entries {
+display: flex;
+flex-direction: column;
+gap: 16px;
+}
+
+.entry-card {
+background: white;
+border-radius: 20px;
+padding: 20px;
+box-shadow: 0 4px 20px rgba(180, 83, 9, 0.1);
+}
+
+.entry-card .media {
+margin-bottom: 12px;
+}
+
+.entry-card .media img,
+.entry-card .media video {
+max-width: 100%;
+max-height: 250px;
+border-radius: 12px;
+}
+
+.entry-card .text {
+font-size: 16px;
+color: #92400E;
+line-height: 1.6;
+white-space: pre-wrap;
+}
+
+.entry-card .footer {
+display: flex;
+justify-content: space-between;
+align-items: center;
+margin-top: 12px;
+}
+
+.entry-card .date {
+font-size: 13px;
+color: #D97706;
+opacity: 0.7;
+}
+
+.entry-card .delete-btn {
+background: none;
+border: none;
+color: #FCA5A5;
+font-size: 20px;
+cursor: pointer;
+padding: 4px;
+}
+
+.entry-card .delete-btn:hover {
+color: #EF4444;
+}
+
+.empty-state {
+text-align: center;
+padding: 60px 20px;
+background: white;
+border-radius: 20px;
+box-shadow: 0 4px 20px rgba(180, 83, 9, 0.1);
+}
+
+.empty-state .heart {
+font-size: 60px;
+margin-bottom: 16px;
+opacity: 0.3;
+}
+
+.empty-state p {
+color: #D97706;
+font-size: 16px;
+}
+
+.entry-count {
+text-align: center;
+margin-top: 24px;
+color: #B45309;
+font-size: 14px;
+}
+
+#fileInput {
+display: none;
+}
+
+.save-status {
+font-size: 12px;
+color: #059669;
+margin-right: auto;
+}
+</style>
+</head>
+<body>
+<div class="container">
+<div class="header">
+<h1>☀️ Gratitude Journal ✨</h1>
+<p>What are you grateful for today?</p>
+</div>
+
+<div class="entry-form">
+<textarea id="entryText" placeholder="Today I'm grateful for..."></textarea>
+
+<div class="media-section">
+<div id="mediaPreview" class="media-preview" style="display: none;">
+<button class="remove-btn" onclick="clearMedia()">×</button>
+</div>
+</div>
+
+<div class="actions">
+<button class="media-btn" onclick="document.getElementById('fileInput').click()">
+📷 Add Photo/Video
+</button>
+<span id="saveStatus" class="save-status"></span>
+<button id="addBtn" class="add-btn" onclick="addEntry()">
++ Add Entry
+</button>
+</div>
+
+<input type="file" id="fileInput" accept="image/*,video/*" onchange="handleFileSelect(event)">
+</div>
+
+<div id="entriesList" class="entries"></div>
+
+<div id="entryCount" class="entry-count"></div>
+</div>
+
+<script>
+let entries = [];
+let currentMedia = null;
+let currentMediaType = null;
+
+document.addEventListener('DOMContentLoaded', () => {
+loadEntries();
+renderEntries();
+updateAddButton();
+
+document.getElementById('entryText').addEventListener('keydown', (e) => {
+if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+e.preventDefault();
+addEntry();
+}
+});
+});
+
+function loadEntries() {
+const saved = localStorage.getItem('gratitude-entries');
+if (saved) {
+entries = JSON.parse(saved);
+}
+}
+
+function saveEntries() {
+localStorage.setItem('gratitude-entries', JSON.stringify(entries));
+showSaveStatus();
+}
+
+function showSaveStatus() {
+const status = document.getElementById('saveStatus');
+status.textContent = '✓ Saved';
+setTimeout(() => { status.textContent = ''; }, 2000);
+}
+
+function handleFileSelect(e) {
+const file = e.target.files?.[0];
+if (!file) return;
+
+if (file.size > 5 * 1024 * 1024) {
+alert('File size must be under 5MB');
+return;
+}
+
+const isVideo = file.type.startsWith('video/');
+const isImage = file.type.startsWith('image/');
+
+if (!isVideo && !isImage) {
+alert('Please select an image or video file');
+return;
+}
+
+currentMediaType = isVideo ? 'video' : 'image';
+
+const reader = new FileReader();
+reader.onload = (event) => {
+currentMedia = event.target.result;
+showMediaPreview();
+updateAddButton();
+};
+reader.readAsDataURL(file);
+}
+
+function showMediaPreview() {
+const preview = document.getElementById('mediaPreview');
+preview.style.display = 'inline-block';
+
+const oldMedia = preview.querySelector('img, video');
+if (oldMedia) oldMedia.remove();
+
+if (currentMediaType === 'image') {
+const img = document.createElement('img');
+img.src = currentMedia;
+preview.appendChild(img);
+} else {
+const video = document.createElement('video');
+video.src = currentMedia;
+video.controls = true;
+preview.appendChild(video);
+}
+}
+
+function clearMedia() {
+currentMedia = null;
+currentMediaType = null;
+document.getElementById('mediaPreview').style.display = 'none';
+document.getElementById('fileInput').value = '';
+updateAddButton();
+}
+
+function updateAddButton() {
+const text = document.getElementById('entryText').value.trim();
+document.getElementById('addBtn').disabled = !text && !currentMedia;
+}
+
+document.getElementById('entryText').addEventListener('input', updateAddButton);
+
+function addEntry() {
+const text = document.getElementById('entryText').value.trim();
+if (!text && !currentMedia) return;
+
+const entry = {
+id: Date.now(),
+text: text,
+date: new Date().toISOString(),
+media: currentMedia,
+mediaType: currentMediaType
+};
+
+entries.unshift(entry);
+saveEntries();
+
+document.getElementById('entryText').value = '';
+clearMedia();
+updateAddButton();
+
+renderEntries();
+}
+
+function deleteEntry(id) {
+entries = entries.filter(e => e.id !== id);
+saveEntries();
+renderEntries();
+}
+
+function formatDate(isoString) {
+const date = new Date(isoString);
+return date.toLocaleDateString('en-US', {
+weekday: 'long',
+year: 'numeric',
+month: 'long',
+day: 'numeric',
+hour: 'numeric',
+minute: '2-digit'
+});
+}
+
+function renderEntries() {
+const container = document.getElementById('entriesList');
+const countEl = document.getElementById('entryCount');
+
+if (entries.length === 0) {
+container.innerHTML = `
+<div class="empty-state">
+<div class="heart">🖤</div>
+<p>No entries yet. Start your gratitude practice!</p>
+</div>
+`;
+countEl.textContent = '';
+return;
+}
+
+container.innerHTML = entries.map(entry => `
+<div class="entry-card">
+${entry.media ? `
+<div class="media">
+${entry.mediaType === 'image' 
+? `<img src="${entry.media}" alt="Gratitude moment">` 
+: `<video src="${entry.media}" controls></video>`
+}
+</div>
+` : ''}
+${entry.text ? `<div class="text">${escapeHtml(entry.text)}</div>` : ''}
+<div class="footer">
+<span class="date">${formatDate(entry.date)}</span>
+<button class="delete-btn" onclick="deleteEntry(${entry.id})">🗑️</button>
+</div>
+</div>
+`).join('');
+
+countEl.innerHTML = `🖤 ${entries.length} ${entries.length === 1 ? 'moment' : 'moments'} of gratitude`;
+}
+
+function escapeHtml(text) {
+const div = document.createElement('div');
+div.textContent = text;
+return div.innerHTML;
+}
+</script>
+</body>
+</html>
