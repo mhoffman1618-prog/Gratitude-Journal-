@@ -8,11 +8,7 @@
 <meta name="apple-mobile-web-app-title" content="Gratitude">
 <title>Gratitude Journal</title>
 
-<!-- App Icon for iOS - Black heart with red arrow on red background -->
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-
-<!-- Fallback icon for other devices -->
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiB2aWV3Qm94PSIwIDAgNTEyIDUxMiI+CiAgPGRlZnM+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9ImJnR3JhZGllbnQiIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMTAwJSIgeTI9IjEwMCUiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAlIiBzdHlsZT0ic3RvcC1jb2xvcjojRkVFMkUyIi8+CiAgICAgIDxzdG9wIG9mZnNldD0iNTAlIiBzdHlsZT0ic3RvcC1jb2xvcjojRkVDQUNBIi8+CiAgICAgIDxzdG9wIG9mZnNldD0iMTAwJSIgc3R5bGU9InN0b3AtY29sb3I6I0ZDQTVBNSIvPgogICAgPC9saW5lYXJHcmFkaWVudD4KICA8L2RlZnM+CiAgPHJlY3QgeD0iMCIgeT0iMCIgd2lkdGg9IjUxMiIgaGVpZ2h0PSI1MTIiIHJ4PSIxMTQiIHJ5PSIxMTQiIGZpbGw9InVybCgjYmdHcmFkaWVudCkiLz4KICA8ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSgyNTYsIDI3MCkiPgogICAgPHBhdGggZD0iTTAgLTQwIEMtMTUgLTgwLCAtNzAgLTgwLCAtODUgLTQwIEMtMTAwIDAsIC03MCA1MCwgMCAxMDAgQzcwIDUwLCAxMDAgMCwgODUgLTQwIEM3MCAtODAsIDE1IC04MCwgMCAtNDBaIiBmaWxsPSIjMDAwMDAwIiB0cmFuc2Zvcm09InNjYWxlKDEuOCkiLz4KICA8L2c+CiAgPGxpbmUgeDE9IjEwMCIgeTE9IjQwMCIgeDI9IjQxMiIgeTI9IjEwMCIgc3Ryb2tlPSIjREMxNDE1IiBzdHJva2Utd2lkdGg9IjIwIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KICA8cG9seWdvbiBwb2ludHM9IjQxMiwxMDAgMzYwLDExMCAzNzAsMTYwIiBmaWxsPSIjREMxNDE1Ii8+CiAgPHBvbHlnb24gcG9pbnRzPSIxMDAsNDAwIDE1MiwzOTAgMTQyLDM0MCIgZmlsbD0iI0RDMTQ2NSIvPgo8L3N2Zz4=">
 
 <style>
 * {
@@ -322,6 +318,12 @@ background: #EF4444;
 color: white;
 border: none;
 }
+
+.processing {
+color: #B45309;
+font-size: 14px;
+margin-top: 8px;
+}
 </style>
 </head>
 <body>
@@ -337,6 +339,9 @@ border: none;
 <div class="media-section">
 <div id="mediaPreview" class="media-preview" style="display: none;">
 <button class="remove-btn" onclick="clearMedia()">×</button>
+</div>
+<div id="processingStatus" class="processing" style="display: none;">
+Optimizing image...
 </div>
 </div>
 
@@ -379,6 +384,11 @@ let currentMediaType = null;
 let pendingDeleteId = null;
 
 const STORAGE_KEY = 'gratitude_journal_entries_v2';
+
+// Image compression settings
+const MAX_IMAGE_WIDTH = 1200; // Max width in pixels
+const MAX_IMAGE_HEIGHT = 1200; // Max height in pixels
+const IMAGE_QUALITY = 0.7; // JPEG quality (0.7 = 70%)
 
 document.addEventListener('DOMContentLoaded', function() {
 loadEntries();
@@ -446,15 +456,62 @@ var totalEntries = entries.length;
 info.textContent = totalEntries + ' ' + (totalEntries === 1 ? 'entry' : 'entries') + ' saved';
 }
 
+// Compress and resize image
+function compressImage(file) {
+return new Promise(function(resolve, reject) {
+var reader = new FileReader();
+
+reader.onload = function(e) {
+var img = new Image();
+
+img.onload = function() {
+// Calculate new dimensions
+var width = img.width;
+var height = img.height;
+
+// Scale down if needed
+if (width > MAX_IMAGE_WIDTH) {
+height = Math.round(height * MAX_IMAGE_WIDTH / width);
+width = MAX_IMAGE_WIDTH;
+}
+if (height > MAX_IMAGE_HEIGHT) {
+width = Math.round(width * MAX_IMAGE_HEIGHT / height);
+height = MAX_IMAGE_HEIGHT;
+}
+
+// Create canvas and draw resized image
+var canvas = document.createElement('canvas');
+canvas.width = width;
+canvas.height = height;
+
+var ctx = canvas.getContext('2d');
+ctx.drawImage(img, 0, 0, width, height);
+
+// Convert to compressed JPEG
+var compressedDataUrl = canvas.toDataURL('image/jpeg', IMAGE_QUALITY);
+
+resolve(compressedDataUrl);
+};
+
+img.onerror = function() {
+reject(new Error('Failed to load image'));
+};
+
+img.src = e.target.result;
+};
+
+reader.onerror = function() {
+reject(new Error('Failed to read file'));
+};
+
+reader.readAsDataURL(file);
+});
+}
+
+// Handle file selection
 function handleFileSelect(e) {
 var file = e.target.files && e.target.files[0];
 if (!file) return;
-
-if (file.size > 2 * 1024 * 1024) {
-alert('File size must be under 2MB to ensure it saves properly.');
-e.target.value = '';
-return;
-}
 
 var isVideo = file.type.indexOf('video/') === 0;
 var isImage = file.type.indexOf('image/') === 0;
@@ -465,8 +522,35 @@ e.target.value = '';
 return;
 }
 
+// For videos, still have a size limit (videos can't be easily compressed in browser)
+if (isVideo && file.size > 10 * 1024 * 1024) {
+alert('Video files must be under 10MB. Try trimming your video or using a shorter clip.');
+e.target.value = '';
+return;
+}
+
 currentMediaType = isVideo ? 'video' : 'image';
 
+if (isImage) {
+// Show processing status
+document.getElementById('processingStatus').style.display = 'block';
+
+// Compress the image
+compressImage(file)
+.then(function(compressedData) {
+currentMedia = compressedData;
+document.getElementById('processingStatus').style.display = 'none';
+showMediaPreview();
+updateAddButton();
+})
+.catch(function(error) {
+console.error('Error compressing image:', error);
+document.getElementById('processingStatus').style.display = 'none';
+alert('Error processing image. Please try again.');
+e.target.value = '';
+});
+} else {
+// For video, read directly
 var reader = new FileReader();
 reader.onload = function(event) {
 currentMedia = event.target.result;
@@ -477,6 +561,7 @@ reader.onerror = function() {
 alert('Error reading file. Please try again.');
 };
 reader.readAsDataURL(file);
+}
 }
 
 function showMediaPreview() {
