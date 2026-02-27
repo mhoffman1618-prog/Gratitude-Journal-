@@ -324,6 +324,16 @@ color: #B45309;
 font-size: 14px;
 margin-top: 8px;
 }
+
+.storage-info {
+background: #ECFDF5;
+border: 1px solid #A7F3D0;
+border-radius: 8px;
+padding: 8px 12px;
+margin-top: 12px;
+font-size: 12px;
+color: #065F46;
+}
 </style>
 </head>
 <body>
@@ -359,6 +369,10 @@ Optimizing image...
 <span id="storageInfo" class="entry-total"></span>
 </div>
 
+<div id="storageUpgrade" class="storage-info" style="display: none;">
+✅ Upgraded to expanded storage! You can now store many more photos.
+</div>
+
 <input type="file" id="fileInput" accept="image/*,video/*" onchange="handleFileSelect(event)">
 </div>
 
@@ -382,19 +396,19 @@ let entries = [];
 let currentMedia = null;
 let currentMediaType = null;
 let pendingDeleteId = null;
+let db = null;
 
-const STORAGE_KEY = 'gratitude_journal_entries_v2';
+const DB_NAME = 'GratitudeJournalDB';
+const DB_VERSION = 1;
+const STORE_NAME = 'entries';
+const OLD_STORAGE_KEY = 'gratitude_journal_entries_v2';
 
-// Image compression settings
-const MAX_IMAGE_WIDTH = 1200; // Max width in pixels
-const MAX_IMAGE_HEIGHT = 1200; // Max height in pixels
-const IMAGE_QUALITY = 0.7; // JPEG quality (0.7 = 70%)
+const MAX_IMAGE_WIDTH = 1600;
+const MAX_IMAGE_HEIGHT = 1600;
+const IMAGE_QUALITY = 0.8;
 
 document.addEventListener('DOMContentLoaded', function() {
-loadEntries();
-renderEntries();
-updateAddButton();
-updateStorageInfo();
+initDatabase();
 
 var textArea = document.getElementById('entryText');
 textArea.addEventListener('input', updateAddButton);
@@ -407,9 +421,105 @@ addEntry();
 });
 });
 
-function loadEntries() {
+function initDatabase() {
+var request = indexedDB.open(DB_NAME, DB_VERSION);
+
+request.onerror = function(event) {
+console.error('Database error:', event.target.error);
+loadFromLocalStorage();
+};
+
+request.onsuccess = function(event) {
+db = event.target.result;
+migrateFromLocalStorage().then(function() {
+loadEntries();
+});
+};
+
+request.onupgradeneeded = function(event) {
+var database = event.target.result;
+if (!database.objectStoreNames.contains(STORE_NAME)) {
+var store = database.createObjectStore(STORE_NAME, { keyPath: 'id' });
+store.createIndex('date', 'date', { unique: false });
+}
+};
+}
+
+function migrateFromLocalStorage() {
+return new Promise(function(resolve) {
 try {
-var saved = localStorage.getItem(STORAGE_KEY);
+var oldData = localStorage.getItem(OLD_STORAGE_KEY);
+if (oldData) {
+var oldEntries = JSON.parse(oldData);
+if (Array.isArray(oldEntries) && oldEntries.length > 0) {
+var transaction = db.transaction([STORE_NAME], 'readwrite');
+var store = transaction.objectStore(STORE_NAME);
+
+var migrated = 0;
+oldEntries.forEach(function(entry) {
+var request = store.put(entry);
+request.onsuccess = function() {
+migrated++;
+};
+});
+
+transaction.oncomplete = function() {
+localStorage.removeItem(OLD_STORAGE_KEY);
+console.log('Migrated ' + migrated + ' entries to IndexedDB');
+document.getElementById('storageUpgrade').style.display = 'block';
+setTimeout(function() {
+document.getElementById('storageUpgrade').style.display = 'none';
+}, 5000);
+resolve();
+};
+
+transaction.onerror = function() {
+console.error('Migration failed');
+resolve();
+};
+} else {
+resolve();
+}
+} else {
+resolve();
+}
+} catch (e) {
+console.error('Migration error:', e);
+resolve();
+}
+});
+}
+
+function loadEntries() {
+if (!db) {
+loadFromLocalStorage();
+return;
+}
+
+var transaction = db.transaction([STORE_NAME], 'readonly');
+var store = transaction.objectStore(STORE_NAME);
+var request = store.getAll();
+
+request.onsuccess = function(event) {
+entries = event.target.result || [];
+entries.sort(function(a, b) {
+return new Date(b.date) - new Date(a.date);
+});
+renderEntries();
+updateAddButton();
+updateStorageInfo();
+};
+
+request.onerror = function() {
+console.error('Error loading entries');
+entries = [];
+renderEntries();
+};
+}
+
+function loadFromLocalStorage() {
+try {
+var saved = localStorage.getItem(OLD_STORAGE_KEY);
 if (saved) {
 entries = JSON.parse(saved);
 if (!Array.isArray(entries)) {
@@ -419,27 +529,69 @@ entries = [];
 entries = [];
 }
 } catch (e) {
-console.error('Error loading entries:', e);
 entries = [];
 }
+renderEntries();
+updateAddButton();
+updateStorageInfo();
 }
 
-function saveEntries() {
+function saveEntry(entry) {
+return new Promise(function(resolve, reject) {
+if (!db) {
+entries.unshift(entry);
 try {
-var dataToSave = JSON.stringify(entries);
-localStorage.setItem(STORAGE_KEY, dataToSave);
-showSaveStatus('✓ Saved');
-updateStorageInfo();
-return true;
+localStorage.setItem(OLD_STORAGE_KEY, JSON.stringify(entries));
+resolve(true);
 } catch (e) {
-console.error('Error saving entries:', e);
-if (e.name === 'QuotaExceededError' || e.code === 22) {
-showSaveStatus('⚠️ Storage full - try removing old entries');
-} else {
-showSaveStatus('⚠️ Error saving');
+entries.shift();
+reject(e);
 }
-return false;
+return;
 }
+
+var transaction = db.transaction([STORE_NAME], 'readwrite');
+var store = transaction.objectStore(STORE_NAME);
+var request = store.add(entry);
+
+request.onsuccess = function() {
+entries.unshift(entry);
+resolve(true);
+};
+
+request.onerror = function(event) {
+console.error('Error saving entry:', event.target.error);
+reject(event.target.error);
+};
+});
+}
+
+function deleteEntryFromDB(id) {
+return new Promise(function(resolve, reject) {
+if (!db) {
+entries = entries.filter(function(e) { return e.id !== id; });
+try {
+localStorage.setItem(OLD_STORAGE_KEY, JSON.stringify(entries));
+resolve(true);
+} catch (e) {
+reject(e);
+}
+return;
+}
+
+var transaction = db.transaction([STORE_NAME], 'readwrite');
+var store = transaction.objectStore(STORE_NAME);
+var request = store.delete(id);
+
+request.onsuccess = function() {
+entries = entries.filter(function(e) { return e.id !== id; });
+resolve(true);
+};
+
+request.onerror = function(event) {
+reject(event.target.error);
+};
+});
 }
 
 function showSaveStatus(message) {
@@ -453,10 +605,10 @@ status.textContent = '';
 function updateStorageInfo() {
 var info = document.getElementById('storageInfo');
 var totalEntries = entries.length;
-info.textContent = totalEntries + ' ' + (totalEntries === 1 ? 'entry' : 'entries') + ' saved';
+var photosCount = entries.filter(function(e) { return e.media; }).length;
+info.textContent = totalEntries + ' ' + (totalEntries === 1 ? 'entry' : 'entries') + ' (' + photosCount + ' with photos)';
 }
 
-// Compress and resize image
 function compressImage(file) {
 return new Promise(function(resolve, reject) {
 var reader = new FileReader();
@@ -465,11 +617,9 @@ reader.onload = function(e) {
 var img = new Image();
 
 img.onload = function() {
-// Calculate new dimensions
 var width = img.width;
 var height = img.height;
 
-// Scale down if needed
 if (width > MAX_IMAGE_WIDTH) {
 height = Math.round(height * MAX_IMAGE_WIDTH / width);
 width = MAX_IMAGE_WIDTH;
@@ -479,7 +629,6 @@ width = Math.round(width * MAX_IMAGE_HEIGHT / height);
 height = MAX_IMAGE_HEIGHT;
 }
 
-// Create canvas and draw resized image
 var canvas = document.createElement('canvas');
 canvas.width = width;
 canvas.height = height;
@@ -487,9 +636,7 @@ canvas.height = height;
 var ctx = canvas.getContext('2d');
 ctx.drawImage(img, 0, 0, width, height);
 
-// Convert to compressed JPEG
 var compressedDataUrl = canvas.toDataURL('image/jpeg', IMAGE_QUALITY);
-
 resolve(compressedDataUrl);
 };
 
@@ -508,7 +655,6 @@ reader.readAsDataURL(file);
 });
 }
 
-// Handle file selection
 function handleFileSelect(e) {
 var file = e.target.files && e.target.files[0];
 if (!file) return;
@@ -522,9 +668,8 @@ e.target.value = '';
 return;
 }
 
-// For videos, still have a size limit (videos can't be easily compressed in browser)
-if (isVideo && file.size > 10 * 1024 * 1024) {
-alert('Video files must be under 10MB. Try trimming your video or using a shorter clip.');
+if (isVideo && file.size > 50 * 1024 * 1024) {
+alert('Video files must be under 50MB.');
 e.target.value = '';
 return;
 }
@@ -532,10 +677,8 @@ return;
 currentMediaType = isVideo ? 'video' : 'image';
 
 if (isImage) {
-// Show processing status
 document.getElementById('processingStatus').style.display = 'block';
 
-// Compress the image
 compressImage(file)
 .then(function(compressedData) {
 currentMedia = compressedData;
@@ -550,14 +693,18 @@ alert('Error processing image. Please try again.');
 e.target.value = '';
 });
 } else {
-// For video, read directly
+document.getElementById('processingStatus').textContent = 'Loading video...';
+document.getElementById('processingStatus').style.display = 'block';
+
 var reader = new FileReader();
 reader.onload = function(event) {
 currentMedia = event.target.result;
+document.getElementById('processingStatus').style.display = 'none';
 showMediaPreview();
 updateAddButton();
 };
 reader.onerror = function() {
+document.getElementById('processingStatus').style.display = 'none';
 alert('Error reading file. Please try again.');
 };
 reader.readAsDataURL(file);
@@ -616,18 +763,23 @@ media: currentMedia,
 mediaType: currentMediaType
 };
 
-entries.unshift(entry);
-
-var saved = saveEntries();
-
-if (saved) {
+saveEntry(entry)
+.then(function() {
+showSaveStatus('✓ Saved');
 textArea.value = '';
 clearMedia();
 updateAddButton();
+updateStorageInfo();
 renderEntries();
+})
+.catch(function(error) {
+console.error('Save error:', error);
+if (error.name === 'QuotaExceededError') {
+showSaveStatus('⚠️ Storage full - try removing old entries');
 } else {
-entries.shift();
+showSaveStatus('⚠️ Error saving');
 }
+});
 }
 
 function showDeleteConfirm(id) {
@@ -648,11 +800,16 @@ closeConfirmDialog();
 }
 
 function deleteEntry(id) {
-entries = entries.filter(function(e) { 
-return e.id !== id; 
-});
-saveEntries();
+deleteEntryFromDB(id)
+.then(function() {
+showSaveStatus('✓ Deleted');
+updateStorageInfo();
 renderEntries();
+})
+.catch(function(error) {
+console.error('Delete error:', error);
+showSaveStatus('⚠️ Error deleting');
+});
 }
 
 function formatDate(isoString) {
